@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
 
 class FFNN:
     def __init__(self, layer_sizes, activations, loss, initializer, regularizer=None):
@@ -14,7 +15,16 @@ class FFNN:
         self.grad_w = []
         self.grad_b = []
 
+        self._validateArchitecture() # validasi layer size sama length activations match transformasi layer
         self._initialize_weights()
+
+    def _validateArchitecture(self) -> None: 
+        numLayers = len(self.layer_sizes) - 1
+        if len(self.activations) != numLayers:
+            raise ValueError(
+                f"Jumlah activations ({len(self.activations)}) "
+                f"harus sama dengan jumlah layer transformasi ({numLayers})"
+            )
 
     def _initialize_weights(self):
         # Inisialisasi weight dan bias setiap layer
@@ -35,8 +45,10 @@ class FFNN:
             self.a_values.append(a)
         return self.a_values[-1]
 
-    def backward(self, y_true):
-        # hitung gradien dari loss ke weight dan bias setiap layer
+    def backward(self, y_true) -> None:
+        # fn backward(y_true) -> None
+        # Hitung gradien dari loss ke weight dan bias setiap layer dengan chain rule
+        # Untuk Softmax+CCE, activation backward tidak dikali karena CCE backward udah include
         self.grad_w = []
         self.grad_b = []
 
@@ -45,7 +57,10 @@ class FFNN:
         delta = self.loss_fn.backward(y_true, self.a_values[-1])
 
         for i in reversed(range(len(self.weights))):
-            delta *= self.activations[i].backward(self.z_values[i])
+            # Skip activation backward untuk Softmax, handle di loss layer
+            activationName = self.activations[i].__class__.__name__
+            if not (activationName == 'Softmax'):
+                delta *= self.activations[i].backward(self.z_values[i])
 
             dW = (self.a_values[i].T @ delta) / m
             db = np.sum(delta, axis=0, keepdims=True) / m
@@ -59,6 +74,7 @@ class FFNN:
             delta = delta @ self.weights[i].T
             
     def update(self, lr):
+        # Update bobot dan bias menggunakan gradient descent: w = w - lr * dw
         for i in range(len(self.weights)):
             self.weights[i] -= lr * self.grad_w[i]
             self.biases[i] -= lr * self.grad_b[i]
@@ -69,6 +85,8 @@ class FFNN:
             lr=0.01,
             batch_size=None,
             verbose=1):
+        # fn fit(X_train, y_train, X_val, y_val, epochs, lr, batch_size, verbose) -> dict
+        # Training loop mini-batch GD. Return history train_loss dan val_loss per epoch
 
         history = {
             "train_loss": [],
@@ -85,28 +103,31 @@ class FFNN:
             indices = np.arange(n_samples)
             np.random.shuffle(indices)
 
-            X_train = X_train[indices]
-            y_train = y_train[indices]
+            X_train_shuffled = X_train[indices]
+            y_train_shuffled = y_train[indices]
 
-            epoch_loss = 0
+            epoch_loss = 0.0
 
             for start in range(0, n_samples, batch_size):
 
                 end = start + batch_size
 
-                X_batch = X_train[start:end]
-                y_batch = y_train[start:end]
+                X_batch = X_train_shuffled[start:end]
+                y_batch = y_train_shuffled[start:end]
 
-                # forward pass
                 y_pred = self.forward(X_batch)
-
-                # hitung loss
                 loss = self.loss_fn.forward(y_batch, y_pred)
 
-                # backward propagation
-                self.backward(y_batch)
+                if self.regularizer:
+                    regLoss = 0.0
+                    for w in self.weights:
+                        if 'L1' in self.regularizer.__class__.__name__:
+                            regLoss += np.sum(np.abs(w))
+                        else:
+                            regLoss += np.sum(w**2)
+                    loss += self.regularizer.lam * regLoss / n_samples
 
-                # update
+                self.backward(y_batch)
                 self.update(lr)
 
                 epoch_loss += loss * len(X_batch)
@@ -115,30 +136,112 @@ class FFNN:
 
             history["train_loss"].append(epoch_loss)
 
+            valLoss = None
             if X_val is not None:
-                val_pred = self.forward(X_val)
-                val_loss = self.loss_fn.forward(y_val, val_pred)
-                history["val_loss"].append(val_loss)
-            else:
-                val_loss = None
+                valPred = self.forward(X_val)
+                valLoss = self.loss_fn.forward(y_val, valPred)
+
+                if self.regularizer:
+                    regVal = 0.0
+                    for w in self.weights:
+                        if 'L1' in self.regularizer.__class__.__name__:
+                            regVal += np.sum(np.abs(w))
+                        else:
+                            regVal += np.sum(w**2)
+                    valLoss += self.regularizer.lam * regVal / X_val.shape[0]
+
+                history["val_loss"].append(valLoss)
 
             if verbose == 1:
-                if val_loss is not None:
-                    print(f"Epoch {epoch+1}/{epochs} - train_loss: {epoch_loss:.4f} - val_loss: {val_loss:.4f}")
+                if valLoss is not None:
+                    print(f"Epoch {epoch+1}/{epochs} - train_loss: {epoch_loss:.6f} - val_loss: {valLoss:.6f}")
                 else:
-                    print(f"Epoch {epoch+1}/{epochs} - train_loss: {epoch_loss:.4f}")
+                    print(f"Epoch {epoch+1}/{epochs} - train_loss: {epoch_loss:.6f}")
 
         return history
 
+    def plotWeightDistribution(self, layerIndices=None, savePath=None) -> None:
+        # Plot histogram distribusi bobot dan bias untuk layer pilihan
+
+        if layerIndices is None:
+            layerIndices = list(range(len(self.weights)))
+
+        numLayers = len(layerIndices)
+        numCols = min(3, numLayers)
+        numRows = (numLayers + numCols - 1) // numCols
+
+        fig, axes = plt.subplots(numRows, numCols, figsize=(5*numCols, 4*numRows))
+        if numRows == 1 and numCols == 1:
+            axes = [axes]
+        else:
+            axes = axes.flatten()
+
+        for idx, layerIdx in enumerate(layerIndices):
+            weights = self.weights[layerIdx].flatten()
+            biases = self.biases[layerIdx].flatten()
+            allParams = np.concatenate([weights, biases])
+
+            axes[idx].hist(allParams, bins=30, alpha=0.7, edgecolor='black')
+            axes[idx].set_title(f'Weight+Bias Layer {layerIdx}')
+            axes[idx].set_xlabel('Parameter Value')
+            axes[idx].set_ylabel('Frequency')
+            axes[idx].grid(True, alpha=0.3)
+
+        for idx in range(numLayers, len(axes)):
+            fig.delaxes(axes[idx])
+
+        plt.tight_layout()
+        if savePath:
+            plt.savefig(savePath, dpi=100, bbox_inches='tight')
+        plt.show()
+
+    def plotGradientDistribution(self, layerIndices=None, savePath=None):
+        # fn plotGradientDistribution(layerIndices, savePath) -> None
+        # Plot histogram distribusi gradien bobot dan bias untuk layer pilihan
+
+        if layerIndices is None:
+            layerIndices = list(range(len(self.grad_w)))
+
+        numLayers = len(layerIndices)
+        numCols = min(3, numLayers)
+        numRows = (numLayers + numCols - 1) // numCols
+
+        fig, axes = plt.subplots(numRows, numCols, figsize=(5*numCols, 4*numRows))
+        if numRows == 1 and numCols == 1:
+            axes = [axes]
+        else:
+            axes = axes.flatten()
+
+        for idx, layerIdx in enumerate(layerIndices):
+            gradW = self.grad_w[layerIdx].flatten()
+            gradB = self.grad_b[layerIdx].flatten()
+            allGrads = np.concatenate([gradW, gradB])
+
+            axes[idx].hist(allGrads, bins=30, alpha=0.7, edgecolor='black', color='orange')
+            axes[idx].set_title(f'Gradient Layer {layerIdx}')
+            axes[idx].set_xlabel('Gradient Value')
+            axes[idx].set_ylabel('Frequency')
+            axes[idx].grid(True, alpha=0.3)
+
+        for idx in range(numLayers, len(axes)):
+            fig.delaxes(axes[idx])
+
+        plt.tight_layout()
+        if savePath:
+            plt.savefig(savePath, dpi=100, bbox_inches='tight')
+        plt.show()
+
     def predict(self, X):
+        # Forward pass tanpa training, return prediksi output
         return self.forward(X)
 
     def save(self, path):
-        # save model
+        # Simpan model ke file pickle
         with open(path, "wb") as f:
             pickle.dump(self, f)
 
     @staticmethod
     def load(path):
+        # Load model dari file pickle
         with open(path, "rb") as f:
             return pickle.load(f)

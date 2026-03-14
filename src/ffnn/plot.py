@@ -1,43 +1,58 @@
 import matplotlib.pyplot as plt
 
-import matplotlib.pyplot as plt
 
-def plot_training_history(history, save_path="training_history.png"):
-    train_loss = history["train_loss"]
-    val_loss = history["val_loss"]
+def plotTrainingHistory(history, savePath=None):
+    # fn plotTrainingHistory(history, savePath) -> None
+    # Plot training dan validation loss per epoch
+    trainLoss = history["train_loss"]
+    valLoss = history["val_loss"]
 
-    epochs = range(1, len(train_loss) + 1)
+    epochs = range(1, len(trainLoss) + 1)
 
-    plt.figure()
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    plt.plot(epochs, train_loss, label="Train Loss")
-    plt.plot(epochs, val_loss, label="Validation Loss")
+    ax.plot(epochs, trainLoss, label="Train Loss", marker='o', markersize=3)
+    ax.plot(epochs, valLoss, label="Validation Loss", marker='s', markersize=3)
 
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Training History")
-    plt.legend()
-    plt.grid(True)
+    ax.set_xlabel("Epoch", fontsize=12)
+    ax.set_ylabel("Loss", fontsize=12)
+    ax.set_title("Training History", fontsize=14)
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3)
 
-    plt.savefig(save_path)
-    plt.close()
+    plt.tight_layout()
+    if savePath:
+        plt.savefig(savePath, dpi=100, bbox_inches='tight')
+    plt.show()
 
-def plot_weight_distribution(weights, layers):
+
+def plotWeightDistribution(weights, layers):
+    # fn plotWeightDistribution(weights, layers) -> None
+    # Plot histogram distribusi bobot untuk layer tertentu
     for i in layers:
         w = weights[i].flatten()
-        plt.hist(w, bins=30)
-        plt.title(f"Weight Distribution Layer {i}")
-        plt.xlabel("Weight Value")
-        plt.ylabel("Frequency")
-        plt.savefig(f"plot_weight_layer_{i}.png")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.hist(w, bins=30, edgecolor='black', alpha=0.7)
+        ax.set_title(f"Weight Distribution Layer {i}", fontsize=12)
+        ax.set_xlabel("Weight Value", fontsize=11)
+        ax.set_ylabel("Frequency", fontsize=11)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f"plot_weight_layer_{i}.png", dpi=100, bbox_inches='tight')
         plt.close()
 
-def plot_gradient_distribution(grad_w, layers):
+
+def plotGradientDistribution(gradW, layers):
+    # fn plotGradientDistribution(gradW, layers) -> None
+    # Plot histogram distribusi gradien untuk layer tertentu
     for i in layers:
-        g = grad_w[i].flatten()
-        plt.hist(g, bins=30)
-        plt.title(f"Gradient Distribution Layer {i}")
-        plt.xlabel("Gradient Value")
-        plt.ylabel("Frequency")
-        plt.savefig(f"plot_grad_layer_{i}.png")
+        g = gradW[i].flatten()
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.hist(g, bins=30, edgecolor='black', alpha=0.7, color='orange')
+        ax.set_title(f"Gradient Distribution Layer {i}", fontsize=12)
+        ax.set_xlabel("Gradient Value", fontsize=11)
+        ax.set_ylabel("Frequency", fontsize=11)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f"plot_grad_layer_{i}.png", dpi=100, bbox_inches='tight')
         plt.close()

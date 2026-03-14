@@ -40,5 +40,42 @@ class Softmax:
 
     def backward(self, z):
         # biasanya disederhanakan saat pakai CCE, ini blom yakin bener
-        s = self.forward(z)
-        return s * (1 - s)
+        # s = self.forward(z)
+        # return s * (1 - s)
+
+        # lukas 
+        # Jacobian matrix softmax: diag(s) - s @ s.T per sample
+        # buat backprop dengan CCE langsung, cukup return ones
+        # karena CCE backward sudah mengandung bentuk y_pred - y_true tanpa kali activation
+        # sc : https://www.bragitoff.com/2021/12/efficient-implementation-of-softmax-activation-function-and-its-derivative-jacobian-in-python/
+        return np.ones_like(z)
+
+
+class LeakyReLU:
+    def __init__(self, alpha=0.01):
+        # LeakyReLU: f(x) = x jika x > 0, else alpha*x
+        # alpha -->  slope kecil untuk negative values
+        self.alpha = alpha
+
+    def forward(self, z):
+        return np.where(z > 0, z, self.alpha * z)
+
+    def backward(self, z):
+        # df/dz = 1 kalo  z > 0, else alpha
+        return np.where(z > 0, 1.0, self.alpha)
+
+
+class ELU:
+    def __init__(self, alpha=1.0):
+        # ELU (Exponential Linear Unit): f(x) = x kalo x > 0, else alpha*(exp(x)-1)
+        # alpha --> scale parameter
+        self.alpha = alpha
+
+    def forward(self, z):
+        return np.where(z > 0, z, self.alpha * (np.exp(z) - 1))
+
+    def backward(self, z):
+        # df/dz = 1 kalo z > 0, else alpha*exp(z)
+        return np.where(z > 0, 1.0, self.alpha * np.exp(z))
+
+# sc : https://www.youtube.com/watch?v=WYHCP3W_kzE (no die relu, elu)

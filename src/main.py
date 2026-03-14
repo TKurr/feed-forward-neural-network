@@ -27,7 +27,7 @@ def train_test_split(X, y, test_ratio=0.2):
 
 def main():
     # preprocessing sementara
-    data = pd.read_csv("data/datasetml_2026.csv")
+    data = pd.read_csv("../data/datasetml_2026.csv")
 
     data["placement_status"] = data["placement_status"].map({
         "Placed": 1,
