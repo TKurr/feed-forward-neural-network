@@ -69,8 +69,8 @@ class Adam(Optimizer):
             self.m_b[i] = self.beta1 * self.m_b[i] + (1 - self.beta1) * grad_b[i]
             
             # second moment update
-            self.v_w[i] = self.beta2 * self.v_w[i] + (1 - self.beta2) * grad_w[i]
-            self.v_b[i] = self.beta2 * self.v_b[i] + (1 - self.beta2) * grad_b[i]
+            self.v_w[i] = self.beta2 * self.v_w[i] + (1 - self.beta2) * (grad_w[i] ** 2)
+            self.v_b[i] = self.beta2 * self.v_b[i] + (1 - self.beta2) * (grad_b[i] ** 2)
             
             # bias corrected estimates
             m_w_hat = self.m_w[i] / bias_correction_m
