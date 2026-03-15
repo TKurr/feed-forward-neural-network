@@ -4,12 +4,13 @@ import matplotlib.pyplot as plt
 from .utils.optimizer import GradientDescent
 
 class FFNN:
-    def __init__(self, layer_sizes, activations, loss, initializer, regularizer=None):
+    def __init__(self, layer_sizes, activations, loss, initializer, regularizer=None, normalizers=None):
         self.layer_sizes = layer_sizes
         self.activations = activations
         self.loss_fn = loss
         self.initializer = initializer
         self.regularizer = regularizer
+        self.normalizers = normalizers
 
         self.weights = []
         self.biases = []
@@ -41,13 +42,14 @@ class FFNN:
         self.a_values = [X]
         for i in range(len(self.weights)):
             z = self.a_values[-1] @ self.weights[i] + self.biases[i]
+            if self.normalizers and i < len(self.normalizers):
+                z = self.normalizers[i].forward(z)
             a = self.activations[i].forward(z)
             self.z_values.append(z)
             self.a_values.append(a)
         return self.a_values[-1]
 
     def backward(self, y_true) -> None:
-        # fn backward(y_true) -> None
         # Hitung gradien dari loss ke weight dan bias setiap layer dengan chain rule
         # Untuk Softmax+CCE, activation backward tidak dikali karena CCE backward udah include
         self.grad_w = []
@@ -58,11 +60,12 @@ class FFNN:
         delta = self.loss_fn.backward(y_true, self.a_values[-1])
 
         for i in reversed(range(len(self.weights))):
-            # Skip activation backward untuk Softmax, handle di loss layer
             activationName = self.activations[i].__class__.__name__
             if not (activationName == 'Softmax'):
                 delta *= self.activations[i].backward(self.z_values[i])
-
+            if self.normalizers and i < len(self.normalizers):
+                delta = self.normalizers[i].backward(delta)
+                
             dW = (self.a_values[i].T @ delta) / m
             db = np.sum(delta, axis=0, keepdims=True) / m
 
@@ -82,8 +85,7 @@ class FFNN:
             batch_size=None,
             optimizer=None,
             verbose=1):
-        # fn fit(X_train, y_train, X_val, y_val, epochs, lr, batch_size, verbose) -> dict
-        # Training loop mini-batch GD. Return history train_loss dan val_loss per epoch
+        # Training loop mini-batch GD. nnti return history train_loss dan val_loss per epoch
 
         history = {
             "train_loss": [],
@@ -130,6 +132,11 @@ class FFNN:
 
                 self.backward(y_batch)
                 optimizer.update_parameters(self.weights, self.biases, self.grad_w, self.grad_b)
+
+                if self.normalizers:
+                    for norm in self.normalizers:
+                        if hasattr(norm, 'update_params'):
+                            norm.update_params(lr)
 
                 epoch_loss += loss * len(X_batch)
 
