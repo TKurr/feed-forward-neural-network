@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+from .utils.optimizer import GradientDescent
 
 class FFNN:
     def __init__(self, layer_sizes, activations, loss, initializer, regularizer=None):
@@ -73,17 +74,13 @@ class FFNN:
 
             delta = delta @ self.weights[i].T
             
-    def update(self, lr):
-        # Update bobot dan bias menggunakan gradient descent: w = w - lr * dw
-        for i in range(len(self.weights)):
-            self.weights[i] -= lr * self.grad_w[i]
-            self.biases[i] -= lr * self.grad_b[i]
 
     def fit(self, X_train, y_train,
             X_val=None, y_val=None,
             epochs=100,
             lr=0.01,
             batch_size=None,
+            optimizer=None,
             verbose=1):
         # fn fit(X_train, y_train, X_val, y_val, epochs, lr, batch_size, verbose) -> dict
         # Training loop mini-batch GD. Return history train_loss dan val_loss per epoch
@@ -97,6 +94,10 @@ class FFNN:
 
         if batch_size is None:
             batch_size = n_samples
+
+        # Set default optimizer kalau None
+        if optimizer is None:
+            optimizer = GradientDescent(lr=lr)
 
         for epoch in range(epochs):
 
@@ -128,7 +129,7 @@ class FFNN:
                     loss += self.regularizer.lam * regLoss / n_samples
 
                 self.backward(y_batch)
-                self.update(lr)
+                optimizer.update_parameters(self.weights, self.biases, self.grad_w, self.grad_b)
 
                 epoch_loss += loss * len(X_batch)
 
