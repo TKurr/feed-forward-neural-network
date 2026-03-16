@@ -14,7 +14,6 @@ class UniformInit:
         self.seed = seed
 
     def initialize(self, shape) -> list:
-        # Return random uniform dari low ke high
         if self.seed is not None:
             np.random.seed(self.seed)
         return np.random.uniform(self.low, self.high, shape)
@@ -28,7 +27,6 @@ class NormalInit:
         self.seed = seed
 
     def initialize(self, shape) -> list:
-        # Return random normal dengan mean dan std= akar(var)
         if self.seed is not None:
             np.random.seed(self.seed)
         return np.random.normal(self.mean, np.sqrt(self.var), shape)
@@ -36,11 +34,10 @@ class NormalInit:
 
 class XavierInit:
     def __init__(self, seed=None) -> None:
-        # Xavier (Glorot) initialization untuk sigmoid/tanh
+        # Xavier initialization untuk sigmoid/tanh
         self.seed = seed
 
     def initialize(self, shape) -> list:
-        # Xavier: limit = sqrt(6 / (fanIn + fanOut))
         fanIn = shape[0]
         fanOut = shape[1] if len(shape) > 1 else 1
         limit = np.sqrt(6.0 / (fanIn + fanOut))
@@ -56,7 +53,6 @@ class HeInit:
         self.seed = seed
 
     def initialize(self, shape) -> list:
-        # He: std = sqrt(2 / fanIn)
         fanIn = shape[0]
         std = np.sqrt(2.0 / fanIn)
 

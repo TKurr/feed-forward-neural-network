@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 
 
 def plotTrainingHistory(history, savePath=None):
-    # fn plotTrainingHistory(history, savePath) -> None
     # Plot training dan validation loss per epoch
     trainLoss = history["train_loss"]
     valLoss = history["val_loss"]
@@ -27,7 +26,6 @@ def plotTrainingHistory(history, savePath=None):
 
 
 def plotWeightDistribution(weights, layers):
-    # fn plotWeightDistribution(weights, layers) -> None
     # Plot histogram distribusi bobot untuk layer tertentu
     for i in layers:
         w = weights[i].flatten()
@@ -43,7 +41,6 @@ def plotWeightDistribution(weights, layers):
 
 
 def plotGradientDistribution(gradW, layers):
-    # fn plotGradientDistribution(gradW, layers) -> None
     # Plot histogram distribusi gradien untuk layer tertentu
     for i in layers:
         g = gradW[i].flatten()
